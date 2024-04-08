@@ -27,9 +27,9 @@ dblock = DataBlock(blocks=(ImageBlock, CategoryBlock),
 dls = dblock.dataloaders(path)
 
 # Create a learner with a pre-trained ResNet34 model
-learn = cnn_learner(dls, resnet152, metrics=accuracy)
+learn = cnn_learner(dls, resnet34, metrics=accuracy)
 
 # Fine-tune the model
 learn.fine_tune(epochs=5)
 
-learn.export('/tmp/Dataset/exported_model_3.pkl')
+learn.export('/tmp/Dataset/exported_model_6.pkl')

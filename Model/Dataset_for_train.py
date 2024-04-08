@@ -8,7 +8,7 @@ import time
 cap = cv2.VideoCapture(0)
 
 # Initialize hand detector
-detector = HandDetector(maxHands=1)
+detector = HandDetector(maxHands=2)
 
 # Constants for image processing
 offset = 20
@@ -16,7 +16,7 @@ imgSize = 300
 counter = 0
 
 # Folder to save images
-folder = "/Users/reetvikchatterjee/Desktop/Dataset/ThankYou"
+folder = "/Users/reetvikchatterjee/Desktop/Dataset/How"
 
 while True:
     # Read frame from video capture
@@ -27,49 +27,53 @@ while True:
 
     # Find hands in the image
     hands, img = detector.findHands(img)
-    if hands:
-        hand = hands[0]
-        x, y, w, h = hand['bbox']
+
+    if len(hands) == 2:
+        # Get bounding box for both hands
+        bbox1 = hands[0]['bbox']
+        bbox2 = hands[1]['bbox']
+
+        # Calculate bounding box that covers both hands
+        x_min = min(bbox1[0], bbox2[0])
+        y_min = min(bbox1[1], bbox2[1])
+        x_max = max(bbox1[0] + bbox1[2], bbox2[0] + bbox2[2])
+        y_max = max(bbox1[1] + bbox1[3], bbox2[1] + bbox2[3])
+
+        # Expand the bounding box to ensure both hands are included with an offset
+        x_min = max(0, x_min - offset)
+        y_min = max(0, y_min - offset)
+        x_max = min(img.shape[1], x_max + offset)
+        y_max = min(img.shape[0], y_max + offset)
 
         # Create a white background image
         imgWhite = np.ones((imgSize, imgSize, 3), np.uint8) * 255
 
         # Crop and resize hand region
-        imgCrop = img[y - offset:y + h + offset, x - offset:x + w + offset]
+        imgCrop = img[y_min:y_max, x_min:x_max]
         if imgCrop.size == 0:
             print("Empty image detected. Skipping...")
             continue
 
-        aspectRatio = h / w
-
-        if aspectRatio > 1:
-            k = imgSize / h
-            wCal = math.ceil(k * w)
-            imgResize = cv2.resize(imgCrop, (wCal, imgSize))
-            wGap = math.ceil((imgSize - wCal) / 2)
-            imgWhite[:, wGap: wCal + wGap] = imgResize
-        else:
-            k = imgSize / w
-            hCal = math.ceil(k * h)
-            imgResize = cv2.resize(imgCrop, (imgSize, hCal))
-            hGap = math.ceil((imgSize - hCal) / 2)
-            imgWhite[hGap: hCal + hGap, :] = imgResize
+        # Resize hand image to match model input size
+        imgResize = cv2.resize(imgCrop, (imgSize, imgSize))
 
         # Display cropped and resized hand image
         cv2.imshow('ImageCrop', imgCrop)
-        cv2.imshow('ImageWhite', imgWhite)
+        cv2.imshow('ImageWhite', imgResize)
+
+        # Check for key press
+        key = cv2.waitKey(1)
+        if key == ord("s"):
+            # Save the image
+            counter += 1
+            cv2.imwrite(f'{folder}/Image_{counter}_{time.time()}.jpg', imgResize)
+            print(f"Image saved: Image_{counter}_{time.time()}.jpg")
 
     # Display original image
     cv2.imshow('Image', img)
 
     # Check for key press
-    key = cv2.waitKey(1)
-    if key == ord("s"):
-        # Save the image
-        counter += 1
-        cv2.imwrite(f'{folder}/Image_{time.time()}.jpg', imgWhite)
-        print(counter)
-    elif key == ord("q"):  # Press 'q' to quit
+    if cv2.waitKey(1) == ord("q"):  # Press 'q' to quit
         break
 
 # Release video capture and close all OpenCV windows
